@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Army Stickman Wars</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;overflow:hidden;font-family:'Courier New',monospace;color:#fff}
+#c{display:block;width:100vw;height:100vh}
+#ui{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10}
+#hud{position:absolute;top:10px;left:10px;background:rgba(0,0,0,0.75);border:1px solid #0f0;padding:8px 14px;border-radius:5px;font-size:13px;line-height:2}
+#hud-right{position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.75);border:1px solid #f80;padding:8px 14px;border-radius:5px;font-size:13px;text-align:right;line-height:2}
+#troop-bar{position:absolute;top:132px;left:10px;background:rgba(0,0,0,0.65);border:1px solid #080;padding:5px 10px;border-radius:5px;font-size:11px;min-width:155px}
+.bar{width:133px;height:7px;background:#333;border-radius:3px;margin:2px 0 4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .3s}
+#level-badge{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.88);border:2px solid #ff0;padding:6px 20px;border-radius:20px;font-size:14px;font-weight:bold;color:#ff0;letter-spacing:2px;text-align:center;min-width:210px;white-space:nowrap}
+#level-bar-wrap{width:180px;height:5px;background:#333;border-radius:3px;margin:3px auto 0}
+#level-bar{height:5px;background:#ff0;border-radius:3px;transition:width .4s}
+#crosshair{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#0f0;font-size:24px;text-shadow:0 0 6px #0f0;pointer-events:none;line-height:1}
+#weapon-bar{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:6px}
+.wslot{width:68px;height:52px;background:rgba(0,0,0,0.75);border:1px solid #444;border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;gap:2px;transition:border-color .15s}
+.wslot.active{border-color:#0f0;background:rgba(0,60,0,0.75);box-shadow:0 0 8px #0f04}
+.wslot .wn{font-size:9px;color:#888}
+.wslot.active .wn{color:#0f0}
+.wslot .wk{font-size:9px;color:#444}
+.wslot.active .wk{color:#0a0}
+#callbtn{position:absolute;bottom:74px;left:50%;transform:translateX(-50%);pointer-events:all;background:rgba(0,70,0,.9);border:1px solid #0f0;color:#0f0;padding:7px 18px;border-radius:4px;cursor:pointer;font-size:12px;font-family:'Courier New',monospace}
+#callbtn:hover{background:rgba(0,120,0,.9)}
+#callbtn:disabled{opacity:.35;cursor:not-allowed}
+#minimap{position:absolute;bottom:12px;right:12px;width:145px;height:145px;border:2px solid #0f0;background:rgba(0,20,0,.9)}
+#msg{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);font-size:22px;color:#ff0;text-shadow:0 0 12px #ff0;text-align:center;pointer-events:none;opacity:0;transition:opacity .4s}
+#vehicle-hint{position:absolute;bottom:134px;left:50%;transform:translateX(-50%);font-size:11px;color:#ff0;text-align:center;display:none}
+#keys-hint{position:absolute;bottom:12px;left:12px;font-size:10px;color:#444;line-height:1.7}
+.xp-pop{position:absolute;font-size:13px;color:#ff0;pointer-events:none;animation:xpfl 1.2s forwards;font-family:'Courier New',monospace}
+@keyframes xpfl{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-50px)}}
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;gap:14px;padding:20px}
+#overlay h1{font-size:32px;color:#0f0;text-shadow:0 0 18px #0f0;letter-spacing:5px;text-align:center}
+#overlay h2{font-size:20px;letter-spacing:3px;text-align:center;color:#ff0}
+#overlay p{color:#888;font-size:12px;max-width:540px;text-align:center;line-height:1.8}
+.bigbtn{background:transparent;border:2px solid #0f0;color:#0f0;padding:10px 28px;font-size:14px;font-family:'Courier New',monospace;cursor:pointer;letter-spacing:2px;transition:all .2s;pointer-events:all}
+.bigbtn:hover{background:#0f0;color:#000}
+.redbtn{border-color:#f00;color:#f00}.redbtn:hover{background:#f00;color:#000}
+.ylwbtn{border-color:#ff0;color:#ff0}.ylwbtn:hover{background:#ff0;color:#000}
+.lvl-grid{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;max-width:540px;margin:4px 0}
+.lvl-cell{width:46px;height:38px;border:1px solid #333;border-radius:3px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;line-height:1.3;cursor:pointer;transition:background .15s}
+.lvl-cell:hover{background:rgba(255,255,255,.05)}
+.lvl-cell.done{border-color:#0f0;background:rgba(0,80,0,.4);color:#0f0}
+.lvl-cell.current{border-color:#ff0;background:rgba(80,80,0,.4);color:#ff0}
+.lvl-cell.locked{border-color:#222;color:#333;cursor:default}
+#lock-note{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.9);border:1px solid #666;padding:22px 32px;border-radius:8px;text-align:center;font-size:13px;pointer-events:all;display:none;z-index:200}
+#lock-note button{margin-top:14px;pointer-events:all}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui">
+  <div id="hud">
+    ❤ HP: <span id="hp">100</span>/100<br>
+    🎯 <span id="weapon-name">Carbine</span><br>
+    💥 Kills: <span id="kills">0</span><br>
+    <span id="ammo">Ammo: 30/30</span>
+  </div>
+  <div id="hud-right">
+    🏅 Level: <span id="lvl-hud">1</span><br>
+    🚗 Kendaraan: <span id="in-vehicle">-</span><br>
+    📍 Musuh: <span id="enemy-count">0</span>
+  </div>
+  <div id="level-badge">
+    LVL <span id="lvl-num">1</span> — <span id="lvl-name">Latihan Dasar</span>
+    <div id="level-bar-wrap"><div id="level-bar" style="width:0%"></div></div>
+    <div style="font-size:10px;color:#888;margin-top:2px">XP: <span id="xp-val">0</span>/<span id="xp-need">100</span></div>
+  </div>
+  <div id="troop-bar">
+    👥 Sekutu: <span id="ally-count">10</span>
+    <div class="bar"><div class="bar-fill" id="ally-bar" style="width:100%;background:#0f0"></div></div>
+    ☠ Musuh: <span id="enemy-troop-count">10</span>
+    <div class="bar"><div class="bar-fill" id="enemy-bar" style="width:100%;background:#f00"></div></div>
+  </div>
+  <div id="crosshair">+</div>
+  <div id="weapon-bar">
+    <div class="wslot active" id="ws0"><span>🔫</span><span class="wn">Carbine</span><span class="wk">[1]</span></div>
+    <div class="wslot" id="ws1"><span>⚡</span><span class="wn">AK-47</span><span class="wk">[2]</span></div>
+    <div class="wslot" id="ws2"><span>🔴</span><span class="wn">Laser</span><span class="wk">[3]</span></div>
+    <div class="wslot" id="ws3"><span>💥</span><span class="wn">Shotgun</span><span class="wk">[4]</span></div>
+  </div>
+  <button id="callbtn" onclick="callReinforcements()">📣 BALA BANTUAN <span id="cooldown"></span></button>
+  <canvas id="minimap"></canvas>
+  <div id="msg"></div>
+  <div id="vehicle-hint"></div>
+  <div id="keys-hint">WASD/Arrow: Gerak | Mouse: Kamera | Klik: Tembak | E: Kendaraan<br>1-4: Senjata | R/F: Reload | Shift: Lari | Space: Lompat</div>
+</div>
+<div id="overlay">
+  <h1>⚔ ARMY STICKMAN WARS ⚔</h1>
+  <p>Pimpin pasukan stickman melawan musuh di 20 level berbeda! Rebut markas musuh, gunakan kendaraan, dan tingkatkan level untuk memenangkan perang!</p>
+  <p style="color:#0f0;font-size:11px">WASD: Gerak · Mouse: Kamera · Klik: Tembak · E: Kendaraan · 1-4: Senjata</p>
+  <div class="lvl-grid" id="lvl-grid"></div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:4px">
+    <button class="bigbtn" onclick="startGame()">▶ MULAI</button>
+    <button class="bigbtn redbtn" onclick="resetSave()">🗑 RESET SAVE</button>
+  </div>
+  <p id="sel-level-info" style="color:#ff0;font-size:12px;margin-top:4px"></p>
+</div>
+<div id="lock-note">
+  <span id="lock-msg"></span><br>
+  <button class="bigbtn" onclick="document.getElementById('lock-note').style.display='none'">OK</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ─── LEVEL DEFINITIONS ────────────────────────────────────────────────────────
+const LEVEL_DEFS=[
+  {n:1, name:'Latihan Dasar',    enemies:4,  allies:8,  eHp:40, eSpd:3.0, xpReq:80},
+  {n:2, name:'Serangan Fajar',   enemies:6,  allies:8,  eHp:45, eSpd:3.2, xpReq:130},
+  {n:3, name:'Bukit Berdarah',   enemies:8,  allies:9,  eHp:50, eSpd:3.3, xpReq:180},
+  {n:4, name:'Hutan Gelap',      enemies:10, allies:9,  eHp:55, eSpd:3.5, xpReq:240},
+  {n:5, name:'Jembatan Maut',    enemies:12, allies:10, eHp:60, eSpd:3.6, xpReq:310},
+  {n:6, name:'Kota Terkepung',   enemies:14, allies:10, eHp:65, eSpd:3.7, xpReq:390},
+  {n:7, name:'Serangan Balik',   enemies:15, allies:11, eHp:70, eSpd:3.8, xpReq:480},
+  {n:8, name:'Ngarai Api',       enemies:16, allies:11, eHp:75, eSpd:4.0, xpReq:580},
+  {n:9, name:'Pendobrak Pintu',  enemies:18, allies:12, eHp:80, eSpd:4.1, xpReq:690},
+  {n:10,name:'Garis Pertahanan', enemies:20, allies:12, eHp:85, eSpd:4.2, xpReq:810},
+  {n:11,name:'Badai Timur',      enemies:20, allies:13, eHp:90, eSpd:4.3, xpReq:940},
+  {n:12,name:'Medan Ranjau',     enemies:22, allies:13, eHp:95, eSpd:4.4, xpReq:1080},
+  {n:13,name:'Markas Rahasia',   enemies:24, allies:14, eHp:100,eSpd:4.5, xpReq:1230},
+  {n:14,name:'Pasukan Elite',    enemies:22, allies:14, eHp:110,eSpd:4.6, xpReq:1390},
+  {n:15,name:'Perang Total',     enemies:26, allies:15, eHp:115,eSpd:4.7, xpReq:1560},
+  {n:16,name:'Sniper Jarak Jauh',enemies:24, allies:15, eHp:120,eSpd:4.8, xpReq:1740},
+  {n:17,name:'Bunker Terakhir',  enemies:28, allies:16, eHp:125,eSpd:4.9, xpReq:1930},
+  {n:18,name:'Pengkhianat',      enemies:26, allies:16, eHp:130,eSpd:5.0, xpReq:2130},
+  {n:19,name:'Serangan Final',   enemies:30, allies:18, eHp:140,eSpd:5.1, xpReq:2340},
+  {n:20,name:'Perang Terakhir',  enemies:35, allies:20, eHp:150,eSpd:5.3, xpReq:2560}
+];
+
+const WEAPONS=[
+  {name:'Carbine', dmg:15,rate:.22,maxAmmo:30,spread:.022,color:0xffaa00,bullets:1,reload:1.5},
+  {name:'AK-47',   dmg:22,rate:.11,maxAmmo:30,spread:.040,color:0xff6600,bullets:1,reload:2.0},
+  {name:'Laser',   dmg:9, rate:.06,maxAmmo:60,spread:.005,color:0x00ffff,bullets:1,reload:1.0},
+  {name:'Shotgun', dmg:14,rate:.65,maxAmmo:8, spread:.150,color:0xff3300,bullets:6,reload:2.5}
+];
+
+// ─── SAVE ─────────────────────────────────────────────────────────────────────
+let saveData={maxUnlocked:1,totalKills:0,totalXP:0};
+try{let s=localStorage.getItem('aswSave2');if(s)saveData=JSON.parse(s);}catch(e){}
+function saveGame(){try{localStorage.setItem('aswSave2',JSON.stringify(saveData));}catch(e){}}
+function resetSave(){if(confirm('Reset semua progress?')){localStorage.removeItem('aswSave2');location.reload();}}
+
+let selectedLevel=1;
+
+// ─── ENGINE ───────────────────────────────────────────────────────────────────
+let scene,camera,renderer,clock;
+let playerMesh,playerVel=new THREE.Vector3(),onGround=true;
+let keys={};
+// Camera rotation — direct (no lag for mouse, but smooth for held keys)
+let yaw=0,pitch=0,targetYaw=0,targetPitch=0;
+let allies=[],enemies=[],bullets=[],vehicles=[];
+let currentWeapon=0,weaponCooldown=0,reloading=false,reloadTimer=0;
+let playerHP=100,kills=0,playerDead=false,gameStarted=false;
+let inVehicle=null;
+let reinforcementCooldown=0;
+let playerAmmo=[30,30,60,8];
+let gameOver=false,missionWon=false;
+let enemySpawnTimer=0;
+let currentLevelDef=null,currentLevel=1;
+let levelXP=0,totalXP=saveData.totalXP||0;
+const FLOOR_Y=-1,GRAVITY=-20;
+let miniCtx;
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+function init(){
+  scene=new THREE.Scene();
+  scene.background=new THREE.Color(0x162012);
+  scene.fog=new THREE.Fog(0x162012,38,130);
+  camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,200);
+  camera.rotation.order='YXZ';
+  renderer=new THREE.WebGLRenderer({canvas:document.getElementById('c'),antialias:true});
+  renderer.setSize(innerWidth,innerHeight);
+  renderer.shadowMap.enabled=true;
+  clock=new THREE.Clock();
+  miniCtx=document.getElementById('minimap').getContext('2d');
+  document.getElementById('minimap').width=145;
+  document.getElementById('minimap').height=145;
+
+  // Lights
+  scene.add(new THREE.AmbientLight(0x334433,.78));
+  let sun=new THREE.DirectionalLight(0xfffbe0,.9);
+  sun.position.set(25,40,10);sun.castShadow=true;
+  sun.shadow.mapSize.width=1024;sun.shadow.mapSize.height=1024;
+  sun.shadow.camera.left=-70;sun.shadow.camera.right=70;
+  sun.shadow.camera.top=70;sun.shadow.camera.bottom=-70;
+  sun.shadow.camera.far=160;
+  scene.add(sun);
+
+  // Events
+  document.addEventListener('keydown',e=>{keys[e.code]=true;handleKey(e);});
+  document.addEventListener('keyup',e=>{keys[e.code]=false;});
+  document.addEventListener('mousemove',onMouse);
+  document.addEventListener('mousedown',e=>{if(e.button===0&&gameStarted&&!playerDead&&!gameOver)tryShoot();});
+  document.addEventListener('click',()=>{if(gameStarted&&!document.pointerLockElement)renderer.domElement.requestPointerLock();});
+  document.addEventListener('pointerlockchange',()=>{
+    document.getElementById('crosshair').style.display=document.pointerLockElement?'block':'none';
+  });
+  window.addEventListener('resize',()=>{
+    camera.aspect=innerWidth/innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth,innerHeight);
+  });
+
+  buildLevelGrid();
+}
+
+// ─── LEVEL SELECT ─────────────────────────────────────────────────────────────
+function buildLevelGrid(){
+  let g=document.getElementById('lvl-grid');g.innerHTML='';
+  for(let i=0;i<20;i++){
+    let n=i+1,ld=LEVEL_DEFS[i];
+    let unlocked=n<=saveData.maxUnlocked;
+    let isCurrent=n===saveData.maxUnlocked;
+    let d=document.createElement('div');
+    d.className='lvl-cell '+(unlocked?(isCurrent&&n>1?'current':'done'):(n===saveData.maxUnlocked+1?'current':'locked'));
+    // Simpler: done if cleared, current if next to play, locked otherwise
+    d.className='lvl-cell '+(n<saveData.maxUnlocked?'done':n===saveData.maxUnlocked?'current':'locked');
+    d.innerHTML='<b>'+n+'</b><span>'+(n<saveData.maxUnlocked?'✓':n===saveData.maxUnlocked?'►':'🔒')+'</span>';
+    d.title=ld.name;
+    d.onclick=()=>selectLevel(n);
+    g.appendChild(d);
+  }
+  document.getElementById('sel-level-info').textContent=
+    'Dipilih: Level '+selectedLevel+' — '+LEVEL_DEFS[selectedLevel-1].name;
+}
+
+function selectLevel(n){
+  if(n>saveData.maxUnlocked){
+    let lk=document.getElementById('lock-note');
+    document.getElementById('lock-msg').textContent='Level '+n+' terkunci!\nSelesaikan level '+saveData.maxUnlocked+' dahulu.';
+    lk.style.display='block';return;
+  }
+  selectedLevel=n;
+  document.getElementById('sel-level-info').textContent=
+    'Dipilih: Level '+n+' — '+LEVEL_DEFS[n-1].name;
+  buildLevelGrid();
+}
+
+// ─── WORLD BUILD ──────────────────────────────────────────────────────────────
+function clearDynamic(){
+  [...allies,...enemies,...bullets].forEach(o=>{if(o.mesh)scene.remove(o.mesh);});
+  bullets.forEach(b=>scene.remove(b.mesh));
+  vehicles.forEach(v=>scene.remove(v.mesh));
+  allies=[];enemies=[];bullets=[];vehicles=[];inVehicle=null;
+}
+
+function clearStaticWorld(){
+  let rem=[];
+  scene.traverse(o=>{if(o!==scene)rem.push(o);});
+  rem.forEach(o=>scene.remove(o));
+  // Re-add lights
+  scene.add(new THREE.AmbientLight(0x334433,.78));
+  let sun=new THREE.DirectionalLight(0xfffbe0,.9);
+  sun.position.set(25,40,10);sun.castShadow=true;
+  sun.shadow.mapSize.width=1024;sun.shadow.mapSize.height=1024;
+  sun.shadow.camera.left=-70;sun.shadow.camera.right=70;
+  sun.shadow.camera.top=70;sun.shadow.camera.bottom=-70;
+  sun.shadow.camera.far=160;
+  scene.add(sun);
+}
+
+function buildWorld(ld){
+  // Ground
+  let g=new THREE.Mesh(new THREE.PlaneGeometry(200,200,40,40),
+    new THREE.MeshLambertMaterial({color:0x2a5424}));
+  g.rotation.x=-Math.PI/2;g.position.y=FLOOR_Y;g.receiveShadow=true;scene.add(g);
+  let grid=new THREE.GridHelper(200,40,0x1a3d16,0x1a3d16);
+  grid.position.y=FLOOR_Y+.01;scene.add(grid);
+  // Road
+  let road=new THREE.Mesh(new THREE.PlaneGeometry(6,86),new THREE.MeshLambertMaterial({color:0x2e2e2e}));
+  road.rotation.x=-Math.PI/2;road.position.set(0,FLOOR_Y+.02,0);scene.add(road);
+  for(let z=-40;z<40;z+=6){
+    let dash=new THREE.Mesh(new THREE.PlaneGeometry(.3,3),new THREE.MeshLambertMaterial({color:0xffffff}));
+    dash.rotation.x=-Math.PI/2;dash.position.set(0,FLOOR_Y+.03,z);scene.add(dash);
+  }
+  // Bases
+  buildBase(-43,0x00aa44,'ALLY');
+  buildBase(43,0xaa0000,'ENEMY');
+  // Cover - more at higher levels
+  let cnt=8+Math.floor(ld.n*.9);
+  let placed=0,tries=0;
+  while(placed<cnt&&tries<200){
+    tries++;
+    let x=(Math.random()-.5)*46,z=(Math.random()-.5)*46;
+    if(Math.abs(z)>38||Math.abs(x)<2.5)continue;
+    let h=1.5+Math.random()*3.5;
+    let m=new THREE.Mesh(new THREE.BoxGeometry(1.8+Math.random(),h,1.8+Math.random()),
+      new THREE.MeshLambertMaterial({color:0x7a5e12+Math.floor(Math.random()*0x222222)}));
+    m.position.set(x,FLOOR_Y+h/2,z);m.castShadow=true;m.receiveShadow=true;scene.add(m);
+    placed++;
+  }
+  // Trees
+  for(let i=0;i<28;i++){
+    let tx=(Math.random()-.5)*180,tz=(Math.random()-.5)*180;
+    if(Math.abs(tz)<60)continue;
+    scene.add(makeTree(tx,tz));
+  }
+  // Vehicles at player base
+  spawnVehicle(-4,FLOOR_Y,-37,'Jeep',0x446622,4,3,1.5);
+  spawnVehicle(4,FLOOR_Y,-36,'Tank',0x4a5f2a,5,3.5,2);
+}
+
+function makeTree(x,z){
+  let g=new THREE.Group();
+  let trunk=new THREE.Mesh(new THREE.CylinderGeometry(.2,.3,2),new THREE.MeshLambertMaterial({color:0x5c3d11}));
+  trunk.position.y=FLOOR_Y+1;
+  let top=new THREE.Mesh(new THREE.ConeGeometry(1.5,3.5,7),new THREE.MeshLambertMaterial({color:0x1a5c1a}));
+  top.position.y=FLOOR_Y+4;
+  g.add(trunk);g.add(top);g.position.set(x,0,z);
+  scene.add(g);return g;
+}
+
+function buildBase(z,color,team){
+  let mat=new THREE.MeshLambertMaterial({color});
+  // Platform
+  let pl=new THREE.Mesh(new THREE.BoxGeometry(18,.3,18),mat);
+  pl.position.set(0,FLOOR_Y+.15,z);pl.receiveShadow=true;scene.add(pl);
+  // HQ
+  let hqC=color===0x00aa44?0x006622:0x660000;
+  let hq=new THREE.Mesh(new THREE.BoxGeometry(6,4,6),new THREE.MeshLambertMaterial({color:hqC}));
+  hq.position.set(0,FLOOR_Y+2,z);hq.castShadow=true;hq.userData={isHQ:true,team};scene.add(hq);
+  // Walls
+  [[-7,0],[7,0],[0,-7],[0,7]].forEach(([dx,dz])=>{
+    let w=new THREE.Mesh(new THREE.BoxGeometry(dx?0.5:8,2.5,dz?0.5:8),mat);
+    w.position.set(dx,FLOOR_Y+1.25,z+dz);w.castShadow=true;scene.add(w);
+  });
+  // Flagpole
+  let pole=new THREE.Mesh(new THREE.CylinderGeometry(.1,.1,5.5),new THREE.MeshLambertMaterial({color:0xbbbbbb}));
+  pole.position.set(0,FLOOR_Y+2.75,z);scene.add(pole);
+  let flag=new THREE.Mesh(new THREE.PlaneGeometry(2,1),new THREE.MeshLambertMaterial({color,side:THREE.DoubleSide}));
+  flag.position.set(1,FLOOR_Y+5.5,z);flag.userData.isFlag=true;scene.add(flag);
+}
+
+// ─── STICKMAN ─────────────────────────────────────────────────────────────────
+function makeStickman(color,sz=1){
+  let g=new THREE.Group();
+  let m=new THREE.MeshLambertMaterial({color});
+  // 0=body 1=head 2=lArm 3=rArm 4=lLeg 5=rLeg
+  let body=new THREE.Mesh(new THREE.CylinderGeometry(.12*sz,.12*sz,.65*sz),m);body.position.y=.93*sz;g.add(body);
+  let head=new THREE.Mesh(new THREE.SphereGeometry(.2*sz,8,6),m);head.position.y=1.48*sz;g.add(head);
+  let aG=new THREE.CylinderGeometry(.06*sz,.06*sz,.52*sz);
+  let lA=new THREE.Mesh(aG,m);lA.position.set(-.3*sz,1.02*sz,0);lA.rotation.z=Math.PI/4;g.add(lA);
+  let rA=new THREE.Mesh(aG,m);rA.position.set(.3*sz,1.02*sz,0);rA.rotation.z=-Math.PI/4;g.add(rA);
+  let lG=new THREE.CylinderGeometry(.07*sz,.07*sz,.62*sz);
+  let lL=new THREE.Mesh(lG,m);lL.position.set(-.15*sz,.31*sz,0);g.add(lL);
+  let rL=new THREE.Mesh(lG,m);rL.position.set(.15*sz,.31*sz,0);g.add(rL);
+  return g;
+}
+
+function createPlayer(){
+  playerMesh=makeStickman(0x00ff88);
+  playerMesh.visible=false;
+  playerMesh.position.set(0,FLOOR_Y,-41);
+  scene.add(playerMesh);
+  camera.position.set(0,FLOOR_Y+1.65,-41);
+  playerVel.set(0,0,0);onGround=true;
+  yaw=0;pitch=0;targetYaw=0;targetPitch=0;
+}
+
+// ─── SPAWNING ─────────────────────────────────────────────────────────────────
+function spawnAllies(n){
+  for(let i=0;i<n;i++){
+    let x=(Math.random()-.5)*14,z=(Math.random()-.5)*10;
+    let mesh=makeStickman(0x00cc44);
+    mesh.position.set(x,FLOOR_Y,-43+z);scene.add(mesh);
+    allies.push({mesh,hp:65,maxHp:65,alive:true,weapon:Math.floor(Math.random()*4),
+      shootCooldown:Math.random()*2,stateTimer:Math.random()*3,
+      patrolTarget:new THREE.Vector3(x,FLOOR_Y,-43+z)});
+  }
+}
+
+function spawnEnemies(n,ld){
+  for(let i=0;i<n;i++){
+    let x=(Math.random()-.5)*14,z=(Math.random()-.5)*10;
+    let mesh=makeStickman(0xff3333);
+    mesh.position.set(x,FLOOR_Y,43+z);scene.add(mesh);
+    enemies.push({mesh,hp:ld.eHp,maxHp:ld.eHp,alive:true,speed:ld.eSpd,
+      weapon:Math.floor(Math.random()*4),shootCooldown:Math.random()*2,
+      stateTimer:Math.random()*3,patrolTarget:new THREE.Vector3(x,FLOOR_Y,43+z)});
+  }
+}
+
+function spawnVehicle(x,y,z,name,color,w,l,h){
+  let g=new THREE.Group();
+  let bm=new THREE.MeshLambertMaterial({color});
+  let body=new THREE.Mesh(new THREE.BoxGeometry(w,h*.6,l),bm);body.position.y=h*.3;body.castShadow=true;g.add(body);
+  let top=new THREE.Mesh(new THREE.BoxGeometry(w*.6,h*.4,l*.6),bm);top.position.y=h*.75;g.add(top);
+  let wMat=new THREE.MeshLambertMaterial({color:0x1a1a1a});
+  [[-w/2+.3,0,-l/2+.3],[w/2-.3,0,-l/2+.3],[-w/2+.3,0,l/2-.3],[w/2-.3,0,l/2-.3]].forEach(([wx,,wz])=>{
+    let wh=new THREE.Mesh(new THREE.CylinderGeometry(.4,.4,.3,8),wMat);
+    wh.rotation.z=Math.PI/2;wh.position.set(wx,.4,wz);g.add(wh);
+  });
+  g.position.set(x,y,z);scene.add(g);
+  vehicles.push({mesh:g,name,hp:200,speed:12,alive:true,yaw:0,w,l});
+}
+
+// ─── MOUSE CAMERA ─────────────────────────────────────────────────────────────
+function onMouse(e){
+  if(!document.pointerLockElement||!gameStarted)return;
+  // Instant response on mouse move — no smoothing lag on direct aim
+  targetYaw  -= e.movementX * 0.0022;
+  targetPitch -= e.movementY * 0.0022;
+  targetPitch = Math.max(-Math.PI/2.2, Math.min(Math.PI/3, targetPitch));
+  // Apply immediately so aiming never lags
+  yaw   = targetYaw;
+  pitch = targetPitch;
+}
+
+// ─── KEY HANDLER ─────────────────────────────────────────────────────────────
+function handleKey(e){
+  if(!gameStarted)return;
+  if(e.code==='Digit1')switchWeapon(0);
+  if(e.code==='Digit2')switchWeapon(1);
+  if(e.code==='Digit3')switchWeapon(2);
+  if(e.code==='Digit4')switchWeapon(3);
+  if(e.code==='KeyF'||e.code==='KeyR')startReload();
+  if(e.code==='KeyE')toggleVehicle();
+  if(e.code==='Escape')document.exitPointerLock&&document.exitPointerLock();
+}
+
+function switchWeapon(i){
+  currentWeapon=i;reloading=false;reloadTimer=0;
+  document.querySelectorAll('.wslot').forEach((s,j)=>s.classList.toggle('active',j===i));
+  document.getElementById('weapon-name').textContent=WEAPONS[i].name;
+  updateAmmoUI();
+}
+
+function startReload(){
+  if(reloading)return;
+  let w=WEAPONS[currentWeapon];
+  if(playerAmmo[currentWeapon]>=w.maxAmmo)return;
+  reloading=true;reloadTimer=w.reload;showMsg('Reload...',1.5);
+}
+
+function tryShoot(){
+  if(playerDead||gameOver||inVehicle||reloading)return;
+  let w=WEAPONS[currentWeapon];
+  if(weaponCooldown>0)return;
+  if(playerAmmo[currentWeapon]<=0){startReload();return;}
+  playerAmmo[currentWeapon]--;
+  weaponCooldown=w.rate;updateAmmoUI();
+  let dir=new THREE.Vector3(0,0,-1).applyEuler(new THREE.Euler(pitch,yaw,0,'YXZ'));
+  for(let b=0;b<w.bullets;b++){
+    let d=dir.clone();
+    d.x+=(Math.random()-.5)*w.spread;
+    d.y+=(Math.random()-.5)*w.spread;
+    d.normalize();
+    spawnBullet(camera.position.clone(),d,'player',w);
+  }
+  if(playerAmmo[currentWeapon]===0)startReload();
+}
+
+function spawnBullet(pos,dir,owner,weapon){
+  let sz=weapon.name==='Laser'?.07:.11;
+  let mesh=new THREE.Mesh(new THREE.SphereGeometry(sz,4,4),
+    new THREE.MeshBasicMaterial({color:weapon.color}));
+  mesh.position.copy(pos);scene.add(mesh);
+  let spd=weapon.name==='Laser'?65:42;
+  bullets.push({mesh,vel:dir.clone().multiplyScalar(spd),owner,dmg:weapon.dmg,life:2.5});
+}
+
+// ─── VEHICLE ──────────────────────────────────────────────────────────────────
+function toggleVehicle(){
+  if(inVehicle){exitVehicle();return;}
+  for(let v of vehicles){
+    if(!v.alive)continue;
+    if(v.mesh.position.distanceTo(camera.position)<5){enterVehicle(v);return;}
+  }
+}
+function enterVehicle(v){
+  inVehicle=v;
+  document.getElementById('in-vehicle').textContent=v.name;
+  document.getElementById('vehicle-hint').textContent='E: Keluar · WASD: Kemudi';
+  document.getElementById('vehicle-hint').style.display='block';
+  showMsg('Naik '+v.name+'!',1.5);
+}
+function exitVehicle(){
+  if(!inVehicle)return;
+  let p=inVehicle.mesh.position.clone();p.x+=3.5;
+  camera.position.set(p.x,FLOOR_Y+1.65,p.z);
+  playerMesh.position.set(p.x,FLOOR_Y,p.z);
+  inVehicle=null;
+  document.getElementById('in-vehicle').textContent='-';
+  document.getElementById('vehicle-hint').style.display='none';
+}
+
+function callReinforcements(){
+  if(reinforcementCooldown>0)return;
+  spawnAllies(5);reinforcementCooldown=25;
+  document.getElementById('callbtn').disabled=true;
+  showMsg('Bala bantuan datang! +5 pasukan!',2.5);
+}
+
+// ─── AI ───────────────────────────────────────────────────────────────────────
+function updateAI(unit,dt,isEnemy){
+  if(!unit.alive)return;
+  unit.stateTimer-=dt;unit.shootCooldown-=dt;
+  let mesh=unit.mesh;
+  let targets=isEnemy
+    ?[...allies,{mesh:{position:camera.position},hp:playerHP,alive:!playerDead}]
+    :enemies;
+  let nearest=null,nearDist=999;
+  for(let t of targets){
+    if(!t.alive)continue;
+    let p=t.mesh?t.mesh.position:camera.position;
+    let d=mesh.position.distanceTo(p);
+    if(d<nearDist){nearDist=d;nearest=t;}
+  }
+  let spd=isEnemy?(unit.speed||3.5):3;
+  let vel=new THREE.Vector3();
+  if(nearest&&nearDist<55){
+    let tp=nearest.mesh?nearest.mesh.position:camera.position;
+    let dir=new THREE.Vector3().subVectors(tp,mesh.position).normalize();
+    if(nearDist>8)vel.add(dir.clone().multiplyScalar(spd));
+    else{let s=new THREE.Vector3(-dir.z,0,dir.x);vel.add(s.multiplyScalar(spd*(Math.random()>.5?1:-1)*.65));}
+    mesh.lookAt(tp.x,mesh.position.y,tp.z);
+    if(unit.shootCooldown<=0&&nearDist<33){
+      let w=WEAPONS[unit.weapon];
+      unit.shootCooldown=w.rate*(1.3+Math.random()*.7);
+      let sd=new THREE.Vector3().subVectors(tp,mesh.position).normalize();
+      sd.x+=(Math.random()-.5)*.1;sd.y+=(Math.random()-.5)*.04;
+      spawnBullet(mesh.position.clone().add(new THREE.Vector3(0,1.45,0)),sd,isEnemy?'enemy':'ally',w);
+    }
+  } else {
+    let base=isEnemy?43:-43;
+    let diff=new THREE.Vector3().subVectors(unit.patrolTarget,mesh.position);
+    if(diff.length()<1.2||unit.stateTimer<=0){
+      unit.stateTimer=3+Math.random()*4;
+      unit.patrolTarget.set((Math.random()-.5)*22,FLOOR_Y,base+(Math.random()-.5)*18);
+    }
+    diff.y=0;diff.normalize();vel.add(diff.multiplyScalar(spd*.5));
+  }
+  vel.y=0;mesh.position.addScaledVector(vel,dt);
+  mesh.position.x=Math.max(-95,Math.min(95,mesh.position.x));
+  mesh.position.z=Math.max(-95,Math.min(95,mesh.position.z));
+  let t=clock.elapsedTime;
+  if(vel.length()>.05){
+    mesh.children[4].rotation.x=Math.sin(t*10)*.45;
+    mesh.children[5].rotation.x=-Math.sin(t*10)*.45;
+  }
+}
+
+// ─── BULLETS ──────────────────────────────────────────────────────────────────
+function updateBullets(dt){
+  for(let i=bullets.length-1;i>=0;i--){
+    let b=bullets[i];b.life-=dt;
+    b.mesh.position.addScaledVector(b.vel,dt);
+    if(b.life<=0||b.mesh.position.y<FLOOR_Y-1){scene.remove(b.mesh);bullets.splice(i,1);continue;}
+    let hit=false;
+    if(b.owner==='player'||b.owner==='ally'){
+      for(let e of enemies){
+        if(!e.alive)continue;
+        if(b.mesh.position.distanceTo(e.mesh.position.clone().add(new THREE.Vector3(0,1,0)))<.85){
+          e.hp-=b.dmg;
+          if(e.hp<=0){
+            killUnit(e);
+            if(b.owner==='player'){kills++;gainXP(12);spawnXPPop(e.mesh.position.clone());}
+          }
+          hit=true;break;
+        }
+      }
+    }
+    if(!hit&&b.owner==='enemy'){
+      if(!playerDead&&b.mesh.position.distanceTo(camera.position)<1){
+        playerHP-=b.dmg;if(playerHP<=0)killPlayer();hit=true;
+      }
+      if(!hit){
+        for(let a of allies){
+          if(!a.alive)continue;
+          if(b.mesh.position.distanceTo(a.mesh.position.clone().add(new THREE.Vector3(0,1,0)))<.85){
+            a.hp-=b.dmg;if(a.hp<=0)killUnit(a);hit=true;break;
+          }
+        }
+      }
+    }
+    if(hit){scene.remove(b.mesh);bullets.splice(i,1);}
+  }
+}
+
+function killUnit(u){u.alive=false;scene.remove(u.mesh);}
+function killPlayer(){if(playerDead)return;playerDead=true;showDeathScreen();}
+
+// ─── VEHICLES UPDATE ──────────────────────────────────────────────────────────
+function updateVehicles(dt){
+  let nearAny=false;
+  for(let v of vehicles){
+    if(!v.alive)continue;
+    if(inVehicle===v){
+      if(keys['KeyA']||keys['ArrowLeft'])v.yaw+=2*dt;
+      if(keys['KeyD']||keys['ArrowRight'])v.yaw-=2*dt;
+      v.mesh.rotation.y=v.yaw;
+      let fwd=new THREE.Vector3(0,0,-1).applyEuler(new THREE.Euler(0,v.yaw,0));
+      if(keys['KeyW']||keys['ArrowUp'])v.mesh.position.addScaledVector(fwd,v.speed*dt);
+      if(keys['KeyS']||keys['ArrowDown'])v.mesh.position.addScaledVector(fwd,-v.speed*.5*dt);
+      v.mesh.position.y=FLOOR_Y;
+      // Camera behind vehicle, but mouse can still look around
+      let behind=fwd.clone().multiplyScalar(-6);
+      let camTarget=new THREE.Vector3(
+        v.mesh.position.x+behind.x,
+        v.mesh.position.y+3.5,
+        v.mesh.position.z+behind.z
+      );
+      camera.position.lerp(camTarget,.15);
+      // Let mouse override yaw when in vehicle too
+      camera.rotation.set(pitch,yaw,0,'YXZ');
+      // Run over enemies
+      for(let e of enemies){
+        if(!e.alive)continue;
+        if(v.mesh.position.distanceTo(e.mesh.position)<2.8){
+          e.hp-=80*dt*5;if(e.hp<=0){killUnit(e);kills++;gainXP(10);}
+        }
+      }
+    }
+    if(!inVehicle&&v.mesh.position.distanceTo(camera.position)<5)nearAny=true;
+  }
+  if(!inVehicle){
+    document.getElementById('vehicle-hint').style.display=nearAny?'block':'none';
+    if(nearAny)document.getElementById('vehicle-hint').textContent='[E] Naik kendaraan';
+  }
+}
+
+// ─── PLAYER UPDATE ────────────────────────────────────────────────────────────
+function updatePlayer(dt){
+  if(playerDead||inVehicle)return;
+  // Camera rotation already set in onMouse instantly;
+  // just apply to camera
+  camera.rotation.set(pitch,yaw,0,'YXZ');
+
+  let speed=(keys['ShiftLeft']||keys['ShiftRight'])?7.5:5;
+  let fwd=new THREE.Vector3(0,0,-1).applyEuler(new THREE.Euler(0,yaw,0));
+  let right=new THREE.Vector3(1,0,0).applyEuler(new THREE.Euler(0,yaw,0));
+  let vel=new THREE.Vector3();
+  if(keys['KeyW']||keys['ArrowUp'])vel.add(fwd.clone().multiplyScalar(speed));
+  if(keys['KeyS']||keys['ArrowDown'])vel.add(fwd.clone().multiplyScalar(-speed));
+  if(keys['KeyA']||keys['ArrowLeft'])vel.add(right.clone().multiplyScalar(-speed));
+  if(keys['KeyD']||keys['ArrowRight'])vel.add(right.clone().multiplyScalar(speed));
+  if(keys['Space']&&onGround){playerVel.y=8.5;onGround=false;}
+  playerVel.x=vel.x;playerVel.z=vel.z;
+  playerVel.y+=GRAVITY*dt;
+  camera.position.addScaledVector(playerVel,dt);
+  if(camera.position.y<=FLOOR_Y+1.65){
+    camera.position.y=FLOOR_Y+1.65;playerVel.y=0;onGround=true;
+  }
+  camera.position.x=Math.max(-95,Math.min(95,camera.position.x));
+  camera.position.z=Math.max(-95,Math.min(95,camera.position.z));
+  playerMesh.position.set(camera.position.x,FLOOR_Y,camera.position.z);
+  playerMesh.rotation.y=yaw;
+  let t=clock.elapsedTime;
+  if(vel.length()>.1){
+    playerMesh.children[4].rotation.x=Math.sin(t*12)*.5;
+    playerMesh.children[5].rotation.x=-Math.sin(t*12)*.5;
+  }
+}
+
+// ─── XP / LEVEL ───────────────────────────────────────────────────────────────
+function gainXP(amt){
+  levelXP+=amt;totalXP+=amt;saveData.totalXP=totalXP;
+  let ld=LEVEL_DEFS[currentLevel-1];
+  let pct=Math.min(1,levelXP/ld.xpReq)*100;
+  document.getElementById('level-bar').style.width=pct+'%';
+  document.getElementById('xp-val').textContent=levelXP;
+  document.getElementById('xp-need').textContent=ld.xpReq;
+}
+
+function spawnXPPop(pos){
+  let v=pos.clone().project(camera);
+  let x=(v.x*.5+.5)*window.innerWidth;
+  let y=(-v.y*.5+.5)*window.innerHeight;
+  if(v.z>1)return; // behind camera
+  let el=document.createElement('div');
+  el.className='xp-pop';el.textContent='+12 XP';
+  el.style.left=(x-20)+'px';el.style.top=(y-20)+'px';
+  document.getElementById('ui').appendChild(el);
+  setTimeout(()=>el.remove(),1300);
+}
+
+// ─── MISSION CHECK ────────────────────────────────────────────────────────────
+function checkMission(){
+  if(missionWon||gameOver)return;
+  let aliveE=enemies.filter(e=>e.alive).length;
+  let pz=camera.position.z;
+  let inEnemyBase=pz>35&&pz<53&&Math.abs(camera.position.x)<12;
+  if(aliveE===0||(inEnemyBase&&aliveE<3)){
+    missionWon=true;completeLevelSuccess();
+  }
+}
+
+function completeLevelSuccess(){
+  gameOver=true;
+  if(currentLevel>=saveData.maxUnlocked&&currentLevel<20)saveData.maxUnlocked=currentLevel+1;
+  else if(currentLevel===20)saveData.maxUnlocked=20;
+  saveData.totalKills=(saveData.totalKills||0)+kills;
+  saveGame();
+  let bonus=currentLevel*60;gainXP(bonus);
+  let ov=document.getElementById('overlay');
+  let next=currentLevel<20;
+  ov.innerHTML=`
+    <h1 style="color:#0f0">🏆 LEVEL ${currentLevel} SELESAI!</h1>
+    <h2>${LEVEL_DEFS[currentLevel-1].name}</h2>
+    <p style="color:#aaa">Kill: ${kills} · XP didapat: ${levelXP} · Bonus level: +${bonus} XP<br>Total XP: ${totalXP} · Total Kill: ${saveData.totalKills}</p>
+    ${next?`<p style="color:#0f0;font-size:12px">🔓 Level ${currentLevel+1} terbuka: <b>${LEVEL_DEFS[currentLevel].name}</b></p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+      <button class="bigbtn" onclick="goNextLevel()">▶ LANJUT LEVEL ${currentLevel+1}</button>
+      <button class="bigbtn ylwbtn" onclick="retryLevel()">↩ ULANGI LEVEL</button>
+      <button class="bigbtn" style="border-color:#888;color:#888" onclick="restartToMenu()">📋 MENU</button>
+    </div>`:`
+    <h2 style="font-size:26px">🎖 SEMUA 20 LEVEL SELESAI! 🎖</h2>
+    <p style="color:#ff0">Kamu adalah Jenderal Perang Terhebat!<br>Total Kill: ${saveData.totalKills} · Total XP: ${totalXP}</p>
+    <button class="bigbtn ylwbtn" onclick="restartToMenu()">📋 KEMBALI KE MENU</button>`}`;
+  ov.style.display='flex';
+}
+
+function goNextLevel(){
+  document.getElementById('overlay').style.display='none';
+  launchLevel(currentLevel+1);
+}
+function restartToMenu(){location.reload();}
+
+// ─── DEATH ────────────────────────────────────────────────────────────────────
+function showDeathScreen(){
+  let ov=document.getElementById('overlay');
+  ov.innerHTML=`
+    <h1 style="color:#f00">💀 KAMU MATI!</h1>
+    <h2 style="color:#888">Level ${currentLevel}: ${LEVEL_DEFS[currentLevel-1].name}</h2>
+    <p style="color:#888">Kill: ${kills} · XP: ${levelXP}</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+      <button class="bigbtn redbtn" onclick="respawn()">🔄 RESPAWN</button>
+      <button class="bigbtn" onclick="retryLevel()">↩ ULANGI LEVEL</button>
+      <button class="bigbtn ylwbtn" onclick="restartToMenu()">📋 MENU</button>
+    </div>`;
+  ov.style.display='flex';
+}
+
+function respawn(){
+  document.getElementById('overlay').style.display='none';
+  playerDead=false;playerHP=100;playerAmmo=[30,30,60,8];
+  camera.position.set(0,FLOOR_Y+1.65,-41);
+  playerMesh.position.set(0,FLOOR_Y,-41);
+  playerVel.set(0,0,0);onGround=true;
+  updateHUD();showMsg('Respawn!',1.5);
+  renderer.domElement.requestPointerLock();
+}
+
+function retryLevel(){
+  document.getElementById('overlay').style.display='none';
+  launchLevel(currentLevel);
+  renderer.domElement.requestPointerLock();
+}
+
+// ─── HUD UPDATE ───────────────────────────────────────────────────────────────
+function updateAmmoUI(){
+  let w=WEAPONS[currentWeapon];
+  document.getElementById('ammo').textContent=
+    'Ammo: '+playerAmmo[currentWeapon]+'/'+w.maxAmmo+(reloading?' ⏳RELOAD':'');
+}
+
+function showMsg(text,dur=2){
+  let el=document.getElementById('msg');el.textContent=text;el.style.opacity=1;
+  clearTimeout(el._t);el._t=setTimeout(()=>el.style.opacity=0,dur*1000);
+}
+
+function updateHUD(){
+  document.getElementById('hp').textContent=Math.max(0,Math.floor(playerHP));
+  document.getElementById('hp').style.color=playerHP<30?'#f00':playerHP<60?'#f80':'#0f0';
+  document.getElementById('kills').textContent=kills;
+  document.getElementById('lvl-hud').textContent=currentLevel;
+  let aliveA=allies.filter(a=>a.alive).length;
+  let aliveE=enemies.filter(e=>e.alive).length;
+  document.getElementById('ally-count').textContent=aliveA;
+  document.getElementById('enemy-troop-count').textContent=aliveE;
+  document.getElementById('enemy-count').textContent=aliveE;
+  let tot=Math.max(1,aliveA+aliveE);
+  document.getElementById('ally-bar').style.width=(aliveA/tot*100)+'%';
+  document.getElementById('enemy-bar').style.width=(aliveE/tot*100)+'%';
+  updateAmmoUI();
+  if(reinforcementCooldown>0){
+    document.getElementById('cooldown').textContent='('+Math.ceil(reinforcementCooldown)+'s)';
+    document.getElementById('callbtn').disabled=true;
+  } else {
+    document.getElementById('cooldown').textContent='';
+    document.getElementById('callbtn').disabled=false;
+  }
+}
+
+// ─── MINIMAP ─────────────────────────────────────────────────────────────────
+function drawMinimap(){
+  let ctx=miniCtx,W=145,H=145;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='rgba(0,18,0,.93)';ctx.fillRect(0,0,W,H);
+  function mm(x,z){return[(x+95)/190*W,(z+95)/190*H];}
+  ctx.fillStyle='rgba(0,170,60,.3)';let[bx,bz]=mm(0,-43);ctx.fillRect(bx-9,bz-9,18,18);
+  ctx.fillStyle='rgba(170,0,0,.3)'; let[ex,ez]=mm(0,43); ctx.fillRect(ex-9,ez-9,18,18);
+  ctx.fillStyle='rgba(60,60,60,.5)';ctx.fillRect(W/2-2,0,4,H);
+  ctx.fillStyle='#00ff88';
+  allies.forEach(a=>{if(!a.alive)return;let[mx,mz]=mm(a.mesh.position.x,a.mesh.position.z);ctx.fillRect(mx-1.5,mz-1.5,3,3);});
+  ctx.fillStyle='#ff4444';
+  enemies.forEach(e=>{if(!e.alive)return;let[mx,mz]=mm(e.mesh.position.x,e.mesh.position.z);ctx.fillRect(mx-1.5,mz-1.5,3,3);});
+  ctx.fillStyle='#ffff00';
+  vehicles.forEach(v=>{if(!v.alive)return;let[vx,vz]=mm(v.mesh.position.x,v.mesh.position.z);ctx.fillRect(vx-2.5,vz-2.5,5,5);});
+  if(!playerDead){
+    let[px,pz]=mm(camera.position.x,camera.position.z);
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(px,pz,4,0,Math.PI*2);ctx.fill();
+    let dx=Math.sin(yaw)*8,dz=-Math.cos(yaw)*8;
+    ctx.strokeStyle='#0f0';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(px,pz);ctx.lineTo(px+dx,pz+dz);ctx.stroke();
+  }
+  ctx.strokeStyle='#00ff44';ctx.lineWidth=1.5;ctx.strokeRect(0,0,W,H);
+  ctx.fillStyle='#ff0';ctx.font='bold 9px Courier New';ctx.textAlign='center';
+  ctx.fillText('LVL '+currentLevel,W/2,H-3);ctx.textAlign='left';
+}
+
+// ─── LAUNCH LEVEL ─────────────────────────────────────────────────────────────
+function launchLevel(lvlNum){
+  clearDynamic();
+  clearStaticWorld();
+  currentLevel=lvlNum;
+  currentLevelDef=LEVEL_DEFS[lvlNum-1];
+  levelXP=0;kills=0;
+  playerHP=100;playerDead=false;gameOver=false;missionWon=false;
+  playerAmmo=[30,30,60,8];currentWeapon=0;weaponCooldown=0;
+  reloading=false;reinforcementCooldown=0;
+  enemySpawnTimer=18+Math.random()*8;
+  // Update badge
+  document.getElementById('lvl-num').textContent=lvlNum;
+  document.getElementById('lvl-name').textContent=currentLevelDef.name;
+  document.getElementById('xp-val').textContent=0;
+  document.getElementById('xp-need').textContent=currentLevelDef.xpReq;
+  document.getElementById('level-bar').style.width='0%';
+  document.getElementById('lvl-hud').textContent=lvlNum;
+  buildWorld(currentLevelDef);
+  createPlayer();
+  spawnAllies(currentLevelDef.allies);
+  spawnEnemies(currentLevelDef.enemies,currentLevelDef);
+  switchWeapon(0);
+  updateHUD();
+  showMsg('Level '+lvlNum+': '+currentLevelDef.name,3.5);
+}
+
+// ─── MAIN LOOP ────────────────────────────────────────────────────────────────
+function loop(){
+  requestAnimationFrame(loop);
+  if(!gameStarted){renderer.render(scene,camera);return;}
+  let dt=Math.min(clock.getDelta(),.05);
+  if(!gameOver){
+    weaponCooldown=Math.max(0,weaponCooldown-dt);
+    reinforcementCooldown=Math.max(0,reinforcementCooldown-dt);
+    if(reloading){reloadTimer-=dt;if(reloadTimer<=0){reloading=false;playerAmmo[currentWeapon]=WEAPONS[currentWeapon].maxAmmo;showMsg('Reload selesai!',1);}}
+    updatePlayer(dt);
+    updateVehicles(dt);
+    for(let a of allies)updateAI(a,dt,false);
+    for(let e of enemies)updateAI(e,dt,true);
+    updateBullets(dt);
+    enemySpawnTimer-=dt;
+    if(enemySpawnTimer<=0){
+      enemySpawnTimer=16+Math.random()*14;
+      let alive=enemies.filter(e=>e.alive).length;
+      let cap=Math.floor(currentLevelDef.enemies*1.4);
+      if(alive<cap)spawnEnemies(Math.min(2+Math.floor(currentLevel/5),4),currentLevelDef);
+    }
+    checkMission();
+    updateHUD();
+    drawMinimap();
+    // Animate flags
+    let t=clock.elapsedTime;
+    scene.traverse(o=>{if(o.userData&&o.userData.isFlag)o.rotation.y=Math.sin(t*1.8)*.35;});
+  }
+  renderer.render(scene,camera);
+}
+
+// ─── START ────────────────────────────────────────────────────────────────────
+function startGame(){
+  document.getElementById('overlay').style.display='none';
+  gameStarted=true;clock.start();
+  launchLevel(selectedLevel);
+  renderer.domElement.requestPointerLock();
+}
+
+init();
+loop();
+</script>
+</body>
+</html>
